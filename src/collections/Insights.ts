@@ -88,16 +88,16 @@ export const Insights: CollectionConfig = {
       localized: true,
     },
 
-    {
-      name: 'translateLT', // службове поле, не зберігається
+    /**{
+      name: 'translateLT', // service field, not saved
       type: 'ui',
       admin: {
         components: {
-          Field: '@/admin/components/TranslateLTButton', // шлях до вашого React-компонента кнопки
+          Field: '@/admin/components/TranslateLTButton', // path to your React button component
         },
         position: 'sidebar',
       },
-    },
+    }, */
   ],
   hooks: {
     /*afterOperation: [
@@ -110,7 +110,7 @@ export const Insights: CollectionConfig = {
         if (op !== 'create' && op !== 'update' && op !== 'updateByID') return
 
         // 3) тільки коли редагуємо дефолтну локаль
-        const defaultLocale = 'en' // замініть на свою
+        const defaultLocale = 'en' // replace with your default locale
         const currentLocale = (req as any).locale || defaultLocale
         if (currentLocale !== defaultLocale) return
 
@@ -128,7 +128,7 @@ export const Insights: CollectionConfig = {
     {
       path: '/:id/translate-lt',
       method: 'post',
-      // доступ тільки адмінам
+      // access only for admins
       handler: async (req) => {
         try {
           if (!req.user || req.user.role !== 'admin') {
@@ -138,10 +138,10 @@ export const Insights: CollectionConfig = {
             })
           }
 
-          // В Payload CMS v3 ID передається через URL path
-          // Отримуємо ID з URL: /:id/translate-lt
+          // In Payload CMS v3 ID is passed through URL path
+          // Get ID from URL: /:id/translate-lt
           const urlParts = (req as any).url?.split('/') || []
-          const id = urlParts[urlParts.length - 2] // перед translate-lt
+          const id = urlParts[urlParts.length - 2] // before translate-lt
 
           if (!id) {
             return new Response(JSON.stringify({ message: 'ID is required' }), {

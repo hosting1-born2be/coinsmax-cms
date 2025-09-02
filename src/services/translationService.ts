@@ -53,7 +53,7 @@ export async function handleDocumentTranslation(
   try {
     console.log('🚀 TRANSLATION SERVICE STARTED')
 
-    // Перевіряємо, чи doc існує і має необхідні властивості
+    // Check if doc exists and has required properties
     if (!doc || !doc.id) {
       console.error('❌ Document is undefined or missing ID:', doc)
       return
@@ -176,7 +176,7 @@ async function processRichTextNode(node: any): Promise<void> {
 // Function to process translation for a specific field
 async function processFieldTranslation(doc: any, fieldName: string): Promise<void> {
   try {
-    // Перевіряємо, чи doc існує
+    // Check if doc exists
     if (!doc) {
       console.error(`❌ Document is undefined for field ${fieldName}`)
       return

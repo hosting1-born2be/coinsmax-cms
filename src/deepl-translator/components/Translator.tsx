@@ -1,16 +1,40 @@
 'use client'
 
 import React, { useState } from 'react'
-import { useDocumentInfo, useLocale } from '@payloadcms/ui'
+import { useDocumentInfo, useLocale, useConfig } from '@payloadcms/ui'
 
-const TranslateLTButton: React.FC = () => {
+const Translator: React.FC = () => {
   const { id } = useDocumentInfo()
   const locale = useLocale()
+  const config: any = useConfig()
   const [isTranslating, setIsTranslating] = useState(false)
   const [status, setStatus] = useState('')
+  const [detectedLanguages, setDetectedLanguages] = useState<string[]>(['lt', 'sk'])
 
-  // Hide button for Slovak locale
-  if (locale?.code === 'sk') {
+  // Get available languages from Payload configuration
+  let availableLocales = config.localization?.locales || []
+
+  // If config.localization.locales doesn't work, use hardcoded fallback from payload.config.ts
+  const fallbackLocales = ['lt', 'sk'] // From payload.config.ts: locales: ['en', 'lt', 'sk']
+
+  const targetLanguages =
+    availableLocales.length > 0
+      ? availableLocales.filter((loc: any) => loc !== 'en')
+      : fallbackLocales
+
+  // Log for debugging
+  console.log('🔍 Localization config:', config.localization)
+  console.log('🔍 Available locales:', availableLocales)
+  console.log('🔍 Target languages:', targetLanguages)
+  console.log('🔍 Current locale:', locale?.code)
+
+  // Show button only for English locale
+  if (locale?.code !== 'en') {
+    return null
+  }
+
+  // Check if there are languages for translation
+  if (targetLanguages.length === 0) {
     return null
   }
 
@@ -24,15 +48,27 @@ const TranslateLTButton: React.FC = () => {
     setStatus('🔄 Translating...')
 
     try {
-      const response = await fetch(`/api/insights/${id}/translate-lt`, {
+      const response = await fetch(`/api/collections/insights/translate?locale=${locale.code}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          id: id,
+          locale: 'en', // Source language is always English
+          codes: targetLanguages, // Translate to all available non-English locales
+          settings: {},
+        }),
       })
 
       if (response.ok) {
-        setStatus('✅ Translation completed successfully!')
+        setStatus(
+          `✅ Translation completed successfully! Document translated to: ${targetLanguages.join(', ').toUpperCase()}`,
+        )
+        // Refresh the page to show updated translations
+        setTimeout(() => {
+          window.location.reload()
+        }, 1000)
       } else {
         const error = await response.json()
         setStatus(`❌ Translation failed: ${error.message || 'Unknown error'}`)
@@ -46,7 +82,6 @@ const TranslateLTButton: React.FC = () => {
 
   return (
     <div className="field-type">
-      <label className="field-label">Translate to Slovak</label>
       <div className="field-input">
         <button
           type="button"
@@ -62,7 +97,9 @@ const TranslateLTButton: React.FC = () => {
             cursor: isTranslating ? 'not-allowed' : 'pointer',
           }}
         >
-          {isTranslating ? '🔄 Translating...' : '🔄 Translate to SK'}
+          {isTranslating
+            ? '🔄 Translating...'
+            : `🔄 Translate to All Languages (${targetLanguages.join(', ').toUpperCase()})`}
         </button>
         {status && (
           <div
@@ -83,4 +120,4 @@ const TranslateLTButton: React.FC = () => {
   )
 }
 
-export default TranslateLTButton
+export { Translator }

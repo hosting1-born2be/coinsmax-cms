@@ -13,6 +13,8 @@ import { Policies } from './collections/Policies'
 
 import { s3Storage } from '@payloadcms/storage-s3'
 
+import { deeplTranslatorPlugin } from './deepl-translator'
+
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
@@ -58,6 +60,14 @@ export default buildConfig({
         },
         region: process.env.S3_REGION || '',
         endpoint: process.env.S3_ENDPOINT || '',
+      },
+    }),
+    deeplTranslatorPlugin({
+      enabled: true,
+      collections: {
+        insights: {
+          fields: ['title', 'content', 'excerpt', 'seo_title', 'seo_description'],
+        },
       },
     }),
   ],
