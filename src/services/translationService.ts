@@ -1,4 +1,5 @@
 import type { CollectionSlug } from 'payload'
+import payload from 'payload'
 
 // DeepL API configuration
 const DEEPL_API_KEY = process.env.DEEPL_API_KEY
@@ -47,6 +48,7 @@ export async function handleDocumentTranslation(
   doc: any,
   collection: CollectionSlug,
   operation: 'create' | 'update',
+  req: Request,
 ): Promise<void> {
   try {
     console.log('🚀 TRANSLATION SERVICE STARTED')
@@ -62,7 +64,7 @@ export async function handleDocumentTranslation(
     console.log('✅ TRANSLATION SERVICE COMPLETED')
 
     // Post final translated object to API
-    await postTranslatedObject(doc, collection)
+    await postTranslatedObject(doc, collection, req)
   } catch (error) {
     console.error('❌ Translation service error:', error)
   }
@@ -202,13 +204,16 @@ async function processFieldTranslation(doc: any, fieldName: string): Promise<voi
 }
 
 // Function to post translated object to API
-async function postTranslatedObject(doc: any, collection: CollectionSlug): Promise<void> {
+// Function to post translated object to API
+async function postTranslatedObject(
+  doc: any,
+  collection: CollectionSlug,
+  req: Request,
+): Promise<void> {
   try {
-    // Create final translated object
     const finalObject = createFinalTranslatedObject(doc)
 
-    // Prepare the data for the API
-    const apiData = {
+    const dataForLT = {
       title: finalObject.title,
       excerpt: finalObject.excerpt,
       content: finalObject.content,
@@ -216,12 +221,23 @@ async function postTranslatedObject(doc: any, collection: CollectionSlug): Promi
       seo_description: finalObject.seo_description,
     }
 
-    console.log('📤 Translated data ready for API:', apiData)
+    console.log('📤 Translated data ready for API:', dataForLT)
 
-    // For now, just log the data that would be posted
-    // TODO: Implement proper Payload API update with admin privileges
+    // ✅ use the initialized instance
+    await (req as any).payload.update({
+      collection,
+      id: doc.id,
+      data: dataForLT,
+      locale: 'lt',
+      depth: 0,
+      overrideAccess: true,
+      context: {
+        skipTranslate: true,
+        skipSlug: true,
+      },
+    })
+
     console.log('✅ Translation data prepared successfully')
-    console.log('📋 Note: API posting requires admin authentication')
   } catch (error) {
     console.error('❌ Error preparing translation data:', error)
   }

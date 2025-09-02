@@ -87,21 +87,94 @@ export const Insights: CollectionConfig = {
       required: false,
       localized: true,
     },
+
+    {
+      name: 'translateLT', // службове поле, не зберігається
+      type: 'ui',
+      admin: {
+        components: {
+          Field: '@/admin/components/TranslateLTButton', // шлях до вашого React-компонента кнопки
+        },
+        position: 'sidebar',
+      },
+    },
   ],
   hooks: {
-    afterChange: [
-      async ({ doc, operation }) => {
-        console.log('🔄 AFTER CHANGE HOOK TRIGGERED')
-        console.log('Operation:', operation)
-        console.log('Document ID:', doc.id)
-        /*console.log('Full document data:')
-        console.log(JSON.stringify(doc, null, 2))
-        console.log('--- END OF DOCUMENT DATA ---')*/
+    /*afterOperation: [
+      async ({ req, operation, result }) => {
+        // 1) уникаємо рекурсії
+        if (req?.context?.skipTranslate) return
 
-        // Call translation service
-        await handleDocumentTranslation(doc, 'insights', operation)
-        console.log('')
+        // 2) тільки для створення/оновлення
+        const op = String(operation)
+        if (op !== 'create' && op !== 'update' && op !== 'updateByID') return
+
+        // 3) тільки коли редагуємо дефолтну локаль
+        const defaultLocale = 'en' // замініть на свою
+        const currentLocale = (req as any).locale || defaultLocale
+        if (currentLocale !== defaultLocale) return
+
+        await handleDocumentTranslation(
+          result,
+          'insights',
+          op === 'create' ? 'create' : 'update',
+          req as Request,
+        )
       },
-    ],
+    ],*/
   },
+
+  endpoints: [
+    {
+      path: '/:id/translate-lt',
+      method: 'post',
+      // доступ тільки адмінам
+      handler: async (req) => {
+        try {
+          if (!req.user || req.user.role !== 'admin') {
+            return new Response(JSON.stringify({ message: 'Forbidden' }), {
+              status: 403,
+              headers: { 'Content-Type': 'application/json' },
+            })
+          }
+
+          // В Payload CMS v3 ID передається через URL path
+          // Отримуємо ID з URL: /:id/translate-lt
+          const urlParts = (req as any).url?.split('/') || []
+          const id = urlParts[urlParts.length - 2] // перед translate-lt
+
+          if (!id) {
+            return new Response(JSON.stringify({ message: 'ID is required' }), {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' },
+            })
+          }
+
+          // 1) читаємо документ у дефолтній локалі
+          const defaultLocale = 'en'
+          const result = await (req as any).payload.findByID({
+            collection: 'insights',
+            id,
+            locale: defaultLocale,
+            depth: 0,
+          })
+          const doc = result.doc
+
+          // 2) запускаємо ваш сервіс (він всередині вже зробить update на locale=lt)
+          //    ВАЖЛИВО: передаємо req, щоб не було конфліктів локів
+          await handleDocumentTranslation(doc, 'insights', 'update', req as any)
+
+          return new Response(JSON.stringify({ ok: true }), {
+            headers: { 'Content-Type': 'application/json' },
+          })
+        } catch (e) {
+          console.error('translate-lt error', e)
+          return new Response(JSON.stringify({ ok: false, error: String(e) }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        }
+      },
+    },
+  ],
 }
