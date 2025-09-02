@@ -12,7 +12,7 @@ import { Field, CustomComponent } from 'payload'
 export const deeplTranslatorPlugin = (pluginOptions: PluginTypes) => {
   return (incomingConfig: Config): Config => {
     const { collections: allCollectionOptions, enabled = true } = pluginOptions
-    let config = { ...incomingConfig }
+    const config = { ...incomingConfig }
 
     // If plugin is disabled, return config without modifications
     if (enabled === false) {

@@ -12,7 +12,7 @@ const Translator: React.FC = () => {
   const [detectedLanguages, setDetectedLanguages] = useState<string[]>(['lt', 'sk'])
 
   // Get available languages from Payload configuration
-  let availableLocales = config.localization?.locales || []
+  const availableLocales = config.localization?.locales || []
 
   // If config.localization.locales doesn't work, use hardcoded fallback from payload.config.ts
   const fallbackLocales = ['lt', 'sk'] // From payload.config.ts: locales: ['en', 'lt', 'sk']
