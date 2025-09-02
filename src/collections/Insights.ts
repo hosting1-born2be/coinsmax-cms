@@ -156,12 +156,16 @@ export const Insights: CollectionConfig = {
             collection: 'insights',
             id,
             locale: defaultLocale,
-            depth: 0,
+            depth: 2,
           })
-          const doc = result.doc
+          console.log('📄 Result found:', result)
+          const doc = result
 
           // 2) запускаємо ваш сервіс (він всередині вже зробить update на locale=lt)
           //    ВАЖЛИВО: передаємо req, щоб не було конфліктів локів
+
+          console.log('📄 Document found:', doc)
+
           await handleDocumentTranslation(doc, 'insights', 'update', req as any)
 
           return new Response(JSON.stringify({ ok: true }), {

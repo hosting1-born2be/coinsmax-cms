@@ -53,6 +53,14 @@ export async function handleDocumentTranslation(
   try {
     console.log('🚀 TRANSLATION SERVICE STARTED')
 
+    // Перевіряємо, чи doc існує і має необхідні властивості
+    if (!doc || !doc.id) {
+      console.error('❌ Document is undefined or missing ID:', doc)
+      return
+    }
+
+    console.log('📄 Document received:', { id: doc.id, title: doc.title })
+
     // Define all fields to translate
     const fieldsToTranslate = ['title', 'excerpt', 'content', 'seo_title', 'seo_description']
 
@@ -144,6 +152,12 @@ async function translateRichTextStructure(richText: any): Promise<any> {
 // Function to process translation for a specific field
 async function processFieldTranslation(doc: any, fieldName: string): Promise<void> {
   try {
+    // Перевіряємо, чи doc існує
+    if (!doc) {
+      console.error(`❌ Document is undefined for field ${fieldName}`)
+      return
+    }
+
     // Extract text to translate
     let textToTranslate: string | undefined
 
