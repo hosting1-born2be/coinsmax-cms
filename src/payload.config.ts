@@ -30,7 +30,7 @@ export default buildConfig({
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
   localization: {
-    locales: ['en', 'lt'],
+    locales: ['en', 'lt', 'sk'],
     defaultLocale: 'en',
   },
   cors: {

@@ -10,7 +10,7 @@ const TranslateLTButton: React.FC = () => {
   const [status, setStatus] = useState('')
 
   // Ховаємо кнопку для литовської локалі
-  if (locale?.code === 'lt') {
+  if (locale?.code === 'sk') {
     return null
   }
 
@@ -46,7 +46,7 @@ const TranslateLTButton: React.FC = () => {
 
   return (
     <div className="field-type">
-      <label className="field-label">Translate to Lithuanian</label>
+      <label className="field-label">Translate to Slovak</label>
       <div className="field-input">
         <button
           type="button"
@@ -62,7 +62,7 @@ const TranslateLTButton: React.FC = () => {
             cursor: isTranslating ? 'not-allowed' : 'pointer',
           }}
         >
-          {isTranslating ? '🔄 Translating...' : '🔄 Translate to LT'}
+          {isTranslating ? '🔄 Translating...' : '🔄 Translate to SK'}
         </button>
         {status && (
           <div

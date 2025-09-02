@@ -6,7 +6,7 @@ const DEEPL_API_KEY = process.env.DEEPL_API_KEY
 const DEEPL_API_URL = process.env.DEEPL_API_URL || 'https://api.deepl.com/v2/translate'
 
 // Function to translate text using DeepL API
-async function translateText(text: string, targetLang: string = 'LT'): Promise<string> {
+async function translateText(text: string, targetLang: string = 'SK'): Promise<string> {
   if (!DEEPL_API_KEY) {
     console.warn('⚠️ DeepL API key not configured')
     return text
@@ -117,7 +117,7 @@ function extractTextFromRichText(richText: any): string {
   return plainText.trim()
 }
 
-// Function to translate richText structure paragraph by paragraph
+// Function to translate richText structure with support for all element types
 async function translateRichTextStructure(richText: any): Promise<any> {
   if (!richText || !richText.root || !richText.root.children) {
     return richText
@@ -126,27 +126,51 @@ async function translateRichTextStructure(richText: any): Promise<any> {
   // Create a deep copy of the structure
   const translatedStructure = JSON.parse(JSON.stringify(richText))
 
-  // Process each child (paragraph/heading) separately
+  // Process each child element (paragraph, heading, list, etc.)
   for (let i = 0; i < translatedStructure.root.children.length; i++) {
     const child = translatedStructure.root.children[i]
-
-    if (child.children && Array.isArray(child.children)) {
-      for (let j = 0; j < child.children.length; j++) {
-        const textNode = child.children[j]
-
-        if (textNode.type === 'text' && textNode.text && textNode.text.trim()) {
-          try {
-            const translatedText = await translateText(textNode.text, 'LT')
-            textNode.text = translatedText
-          } catch (error) {
-            console.error(`❌ Error translating text node ${i}-${j}:`, error)
-          }
-        }
-      }
-    }
+    await processRichTextNode(child)
   }
 
   return translatedStructure
+}
+
+// Recursive function to process richText nodes
+async function processRichTextNode(node: any): Promise<void> {
+  try {
+    // Handle text nodes
+    if (node.type === 'text' && node.text && node.text.trim()) {
+      const translatedText = await translateText(node.text, 'SK')
+      node.text = translatedText
+      return
+    }
+
+    // Handle nodes with children (paragraphs, headings, lists, etc.)
+    if (node.children && Array.isArray(node.children)) {
+      for (let j = 0; j < node.children.length; j++) {
+        const childNode = node.children[j]
+        await processRichTextNode(childNode)
+      }
+    }
+
+    // Handle list items specifically (they might have nested structure)
+    if (node.type === 'listitem' && node.children) {
+      for (let j = 0; j < node.children.length; j++) {
+        const listItemChild = node.children[j]
+        await processRichTextNode(listItemChild)
+      }
+    }
+
+    // Handle custom elements that might have text in different properties
+    if (node.type === 'heading' && node.children) {
+      for (let j = 0; j < node.children.length; j++) {
+        const headingChild = node.children[j]
+        await processRichTextNode(headingChild)
+      }
+    }
+  } catch (error) {
+    console.error(`❌ Error processing richText node:`, error)
+  }
 }
 
 // Function to process translation for a specific field
@@ -203,7 +227,7 @@ async function processFieldTranslation(doc: any, fieldName: string): Promise<voi
     }
 
     // Translate the text
-    const translatedText = await translateText(textToTranslate, 'LT')
+    const translatedText = await translateText(textToTranslate, 'SK')
 
     if (translatedText === textToTranslate) {
       return
@@ -235,14 +259,16 @@ async function postTranslatedObject(
       seo_description: finalObject.seo_description,
     }
 
-    console.log('📤 Translated data ready for API:', dataForLT)
+    //console.log('📤 Translated data ready for API:', dataForLT)
+
+    console.log('📄 Final Object Content:', finalObject.content.root.children)
 
     // ✅ use the initialized instance
     await (req as any).payload.update({
       collection,
       id: doc.id,
       data: dataForLT,
-      locale: 'lt',
+      locale: 'sk',
       depth: 0,
       overrideAccess: true,
       context: {
