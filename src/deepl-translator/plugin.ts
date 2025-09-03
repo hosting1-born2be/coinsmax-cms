@@ -1,5 +1,4 @@
 import type { Config } from 'payload'
-import { onInitExtension } from './onInitExtension'
 import type { PluginTypes } from './types'
 import {
   createTranslatorHandler,
@@ -11,7 +10,7 @@ import { Field, CustomComponent } from 'payload'
 
 export const deeplTranslatorPlugin = (pluginOptions: PluginTypes) => {
   return (incomingConfig: Config): Config => {
-    const { collections: allCollectionOptions, enabled = true } = pluginOptions
+    const { collections: allCollectionOptions, enabled = true, fallbackLocales } = pluginOptions
     const config = { ...incomingConfig }
 
     // If plugin is disabled, return config without modifications
@@ -19,18 +18,52 @@ export const deeplTranslatorPlugin = (pluginOptions: PluginTypes) => {
       return config
     }
 
+    // Add fallback locales to global config for client-side access
+    if (fallbackLocales) {
+      config.globals = config.globals || []
+      config.globals.push({
+        slug: 'deepl-translator-config',
+        fields: [
+          {
+            name: 'fallbackLocales',
+            type: 'array',
+            fields: [
+              {
+                name: 'locale',
+                type: 'text',
+              },
+            ],
+            defaultValue: fallbackLocales.map((loc: string) => ({ locale: loc })),
+            admin: {
+              readOnly: true,
+            },
+          },
+        ],
+        admin: {
+          hidden: true,
+        },
+      })
+    }
+
     // Add translation endpoints to collections
     config.collections = (config.collections || []).map((existingCollection) => {
+      // Check if this collection should have translator
       const collectionOptions = allCollectionOptions[existingCollection.slug]
+      const shouldAddTranslator = !!collectionOptions
 
-      if (!collectionOptions) return existingCollection
+      console.log(`🔍 Plugin: Processing collection "${existingCollection.slug}"`)
+      console.log(`  - Has collectionOptions:`, !!collectionOptions)
+      console.log(`  - allCollectionOptions keys:`, Object.keys(allCollectionOptions))
+      console.log(`  - shouldAddTranslator:`, shouldAddTranslator)
 
+      if (!shouldAddTranslator) {
+        console.log(`  - Skipping collection "${existingCollection.slug}"`)
+        return existingCollection
+      }
+
+      console.log(`  - Adding translator to collection "${existingCollection.slug}"`)
       return {
         ...existingCollection,
-        hooks: {
-          ...(existingCollection.hooks || {}),
-          // Removed automatic translation on save - keeping only manual translator
-        },
         fields: [
           ...(existingCollection.fields || []),
           // Add translator UI component
@@ -48,10 +81,6 @@ export const deeplTranslatorPlugin = (pluginOptions: PluginTypes) => {
       }
     })
 
-    // Removed automatic media caption generation - keeping only manual translator
-
-    // Admin components removed - keeping only manual translator
-
     // Add global endpoints
     config.endpoints = [
       ...(config.endpoints || []),
@@ -66,12 +95,6 @@ export const deeplTranslatorPlugin = (pluginOptions: PluginTypes) => {
         handler: generateTextHandler(pluginOptions),
       },
     ]
-
-    // Add onInit hook
-    config.onInit = async (payload) => {
-      if (incomingConfig.onInit) await incomingConfig.onInit(payload)
-      onInitExtension(pluginOptions, payload)
-    }
 
     return config
   }

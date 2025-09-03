@@ -15,14 +15,14 @@ export interface PluginTypes {
    */
   deeplApiKey?: string
   /**
-   * DeepL API URL (optional, defaults to free tier)
+   * DeepL API URL (optional, defaults to pro tier)
    */
   deeplApiUrl?: string
   /**
-   * DeepL plan type: always 'pro'
-   * @default 'pro'
+   * Fallback locales when Payload localization is not configured
+   * @default ['en']
    */
-  deeplPlan?: 'pro'
+  fallbackLocales?: string[]
 }
 
 export interface CollectionOptions {
@@ -33,47 +33,39 @@ export interface CollectionOptions {
   /**
    * Custom settings for DeepL
    */
-  settings?: {
-    /**
-     * Formality level: 'more' | 'less' | 'prefer_more' | 'prefer_less'
-     */
-    formality?: 'more' | 'less' | 'prefer_more' | 'prefer_less'
-    /**
-     * Preserve formatting
-     */
-    preserveFormatting?: boolean
-    /**
-     * Tag handling: 'xml' | 'html'
-     */
-    tagHandling?: 'xml' | 'html'
-    /**
-     * Split sentences: '0' | '1' | 'nonewlines'
-     */
-    splitSentences?: '0' | '1' | 'nonewlines'
-  }
+  settings?: DeepLTranslationSettings
   /**
    * Access control for translation endpoints
    */
   access?: {
     translate?: boolean
-    generateAlt?: boolean
   }
 }
 
-export interface PromptParams {
-  messages: any[]
-  namespace?: string
-  sourceLanguage?: string
-  language?: string
-  settings?: any
+export interface DeepLTranslationSettings {
+  /**
+   * Formality level: 'more' | 'less' | 'prefer_more' | 'prefer_less'
+   */
+  formality?: 'more' | 'less' | 'prefer_more' | 'prefer_less'
+  /**
+   * Preserve formatting
+   */
+  preserveFormatting?: boolean
+  /**
+   * Tag handling: 'xml' | 'html'
+   */
+  tagHandling?: 'xml' | 'html'
+  /**
+   * Split sentences: '0' | '1' | 'nonewlines'
+   */
+  splitSentences?: '0' | '1' | 'nonewlines'
 }
 
 export interface TranslationRequest {
   id: string
   locale: string
   codes?: string[]
-  settings?: any
-  onlyMissing?: boolean
+  settings?: DeepLTranslationSettings
 }
 
 export interface TranslationResponse {
@@ -97,4 +89,17 @@ export interface DeepLTranslationResponse {
     detected_source_language: string
     text: string
   }>
+}
+
+export interface GenerateTextRequest {
+  text: string
+  targetLanguage: string
+  sourceLanguage?: string
+  settings?: DeepLTranslationSettings
+}
+
+export interface GenerateTextResponse {
+  success: boolean
+  translatedText?: string
+  error?: string
 }

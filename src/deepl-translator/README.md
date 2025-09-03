@@ -1,200 +1,189 @@
 # DeepL Translator Plugin for Payload CMS
 
-A powerful translation plugin for Payload CMS that uses DeepL's high-quality translation API to manually translate content between multiple languages.
+A clean, efficient translation plugin for Payload CMS that integrates with DeepL's translation API.
 
 ## Features
 
-- 🌐 **High-Quality Translations**: Powered by DeepL's Pro translation API
-- 🔄 **Manual Translation**: Translate content on-demand via admin interface
-- 📝 **Field-Level Control**: Choose which fields to translate for each collection
-- 🎯 **Smart Merging**: Intelligently merges translated content with existing translations
-- 🛡️ **Access Control**: Built-in role-based access control for translation endpoints
-- 📱 **Admin UI Integration**: Seamless integration with Payload CMS admin interface
-- 🚀 **Batch Translation**: Translate multiple fields at once
-- ⚡ **Performance Optimized**: Efficient batch processing and caching
-- 🔍 **Dynamic Language Detection**: Automatically detects available languages from Payload config
-- 📊 **RichText Support**: Full support for Lexical RichText editor content
-- 🔄 **Force Re-translation**: Always re-translates fields to ensure content freshness
+- **Manual Translation**: Translate documents on-demand through the admin interface
+- **RichText Support**: Full support for Payload's RichText fields
+- **Batch Translation**: Translate multiple documents at once
+- **Flexible Configuration**: Configure which fields to translate per collection
+- **DeepL Integration**: Uses DeepL's professional translation API
+- **Clean Architecture**: Well-structured, maintainable code
+- **Configurable Fallback Locales**: Set fallback languages via plugin configuration
 
 ## Installation
 
-1. **Install the plugin**:
-   ```bash
-   npm install @your-org/deepl-translator
-   # or
-   yarn add @your-org/deepl-translator
-   ```
+1. Install the plugin:
+```bash
+npm install @your-org/deepl-translator
+# or
+yarn add @your-org/deepl-translator
+```
 
-2. **Set up environment variables**:
-   ```bash
-   # .env
-   DEEPL_API_KEY=your-deepl-api-key-here
-   ```
+2. Set your DeepL API key in environment variables:
+```env
+DEEPL_API_KEY=your-deepl-api-key-here
+```
 
-3. **Configure the plugin in your Payload config**:
-   ```typescript
-   import { deeplTranslatorPlugin } from './deepl-translator'
+3. Import and configure the plugin in your Payload config:
 
-   export default buildConfig({
-     // ... other config
-     localization: {
-       locales: ['en', 'lt', 'sk'], // Your supported languages
-       defaultLocale: 'en',
-     },
-     plugins: [
-       deeplTranslatorPlugin({
-         enabled: true,
-         collections: {
-           insights: {
-             fields: ['title', 'content', 'excerpt', 'seo_title', 'seo_description'],
-           },
-         },
-       }),
-     ],
-   })
-   ```
+```typescript
+import { buildConfig } from 'payload/config'
+import { deeplTranslatorPlugin } from '@your-org/deepl-translator'
 
-## Configuration Options
+export default buildConfig({
+  // ... your existing config
+  plugins: [
+    deeplTranslatorPlugin({
+      enabled: true,
+      // Fallback locales when Payload localization is not configured
+      fallbackLocales: ['lt', 'sk', 'de', 'fr'],
+      collections: {
+        posts: {
+          fields: ['title', 'content', 'excerpt'],
+          settings: {
+            formality: 'prefer_more',
+            preserveFormatting: true,
+          },
+          access: {
+            translate: true,
+          },
+        },
+        pages: {
+          fields: ['title', 'content'],
+          settings: {
+            formality: 'less',
+          },
+        },
+      },
+    }),
+  ],
+})
+```
+
+## Configuration
 
 ### Plugin Options
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `enabled` | `boolean` | `true` | Enable/disable the plugin |
+| `enabled` | `boolean` | `true` | Enable or disable the plugin |
 | `collections` | `object` | `{}` | Collection-specific configuration |
 | `deeplApiKey` | `string` | `process.env.DEEPL_API_KEY` | DeepL API key |
-| `deeplApiUrl` | `string` | `https://api.deepl.com/v2/translate` | DeepL Pro API URL |
+| `deeplApiUrl` | `string` | `https://api.deepl.com/v2/translate` | DeepL API URL |
+| `fallbackLocales` | `string[]` | `['lt', 'sk']` | Fallback locales when Payload localization is not configured |
+
+### Environment Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `DEEPL_API_KEY` | Your DeepL API key | `DEEPL_API_KEY=your-key-here` |
 
 ### Collection Options
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `fields` | `string[]` | `[]` | Fields to translate |
-| `settings` | `object` | `{}` | DeepL-specific settings |
+| `settings` | `DeepLTranslationSettings` | `{}` | DeepL translation settings |
 | `access` | `object` | `{}` | Access control settings |
 
-### DeepL Settings
+### DeepL Translation Settings
 
-| Setting | Type | Description |
-|---------|------|-------------|
+| Option | Type | Description |
+|--------|------|-------------|
 | `formality` | `'more' \| 'less' \| 'prefer_more' \| 'prefer_less'` | Formality level |
-| `preserveFormatting` | `boolean` | Preserve text formatting |
-| `tagHandling` | `'xml' \| 'html'` | HTML/XML tag handling |
-| `splitSentences` | `'0' \| '1' \| 'nonewlines'` | Sentence splitting behavior |
+| `preserveFormatting` | `boolean` | Preserve formatting |
+| `tagHandling` | `'xml' \| 'html'` | Tag handling mode |
+| `splitSentences` | `'0' \| '1' \| 'nonewlines'` | Sentence splitting |
 
 ## Usage
 
 ### Manual Translation
 
-The plugin provides a manual translation interface in the admin panel:
-
-1. Navigate to a document in the admin panel
-2. Look for the "Translator" sidebar component (only visible for English locale)
-3. Click "Translate to All Languages" to translate to all non-English locales
-4. The button automatically detects available languages from your Payload config
-
-### Translation Behavior
-
-- **Source Language**: Always English (`en`)
-- **Target Languages**: Automatically detected from `config.localization.locales`
-- **Dynamic Detection**: Plugin automatically finds all non-English locales from your Payload configuration
-- **Field Processing**: All specified fields are re-translated (even if translations exist)
-- **RichText Support**: Full support for Lexical RichText editor with nested elements (paragraphs, lists, links, headings)
-- **Content Preservation**: Original structure and formatting are maintained
-- **Smart Visibility**: Translation button only appears for English locale documents
+1. Open any document in the admin interface
+2. Look for the "Translator" sidebar component
+3. Select target languages and click "Translate"
 
 ### API Endpoints
 
-The plugin provides several API endpoints:
+#### Translate Single Document
+```http
+POST /api/collections/:collectionSlug/translate
+Content-Type: application/json
 
-- `POST /api/collections/:collectionSlug/translate` - Translate a document
-- `POST /api/generate-text` - Generate translated text
-
-### Programmatic Usage
-
-```typescript
-import { DeepLService } from './deepl-translator'
-
-const deeplService = new DeepLService({
-  collections: {},
-  deeplApiKey: process.env.DEEPL_API_KEY,
-})
-
-// Translate single text
-const translated = await deeplService.translateText(
-  'Hello world',
-  'LT',
-  'EN',
-  { formality: 'prefer_more' }
-)
-
-// Batch translate multiple texts
-const translated = await deeplService.translateBatch(
-  ['Hello', 'World'],
-  'LT',
-  'EN'
-)
+{
+  "id": "document-id",
+  "locale": "en",
+  "codes": ["de", "fr"],
+  "settings": {
+    "formality": "more"
+  }
+}
 ```
 
-## Supported Languages
+#### Generate Text
+```http
+POST /api/generate-text
+Content-Type: application/json
 
-DeepL Pro supports 29+ languages including:
+{
+  "text": "Hello world",
+  "targetLanguage": "de",
+  "sourceLanguage": "en",
+  "settings": {
+    "formality": "less"
+  }
+}
+```
 
-- **European Languages**: English, German, French, Italian, Spanish, Portuguese, Russian, Dutch, Polish, Bulgarian, Czech, Danish, Greek, Estonian, Finnish, Hungarian, Indonesian, Korean, Lithuanian, Latvian, Norwegian, Romanian, Slovak, Slovenian, Swedish, Turkish, Ukrainian
-- **Asian Languages**: Japanese, Chinese, Thai, Vietnamese
-- **Other Languages**: Arabic, Hindi
+## Fallback Locales Configuration
 
-## Access Control
+The plugin supports fallback locales configuration through the plugin options:
 
-The plugin includes built-in access control:
+### Plugin Configuration
+```typescript
+deeplTranslatorPlugin({
+  fallbackLocales: ['lt', 'sk', 'de', 'fr'],
+  // ... other options
+})
+```
 
-- **Admin Only**: Translation endpoints require admin role by default
-- **Customizable**: Configure access per collection
-- **Role-Based**: Integrates with Payload's role system
+### Default Values
+If no fallback locales are configured, the plugin will use:
+```typescript
+['lt', 'sk'] // Lithuanian and Slovak
+```
 
-## Error Handling
+## Architecture
 
-The plugin includes comprehensive error handling:
+The plugin follows a clean, modular architecture:
 
-- **API Errors**: Graceful handling of DeepL API errors
-- **Rate Limiting**: Automatic retry with exponential backoff
-- **Fallback**: Original content preserved if translation fails
-- **Logging**: Detailed logging for debugging
-- **Recursion Prevention**: Smart context flags prevent infinite loops
+- **`plugin.ts`**: Main plugin configuration and setup
+- **`types.ts`**: TypeScript type definitions
+- **`deeplService.ts`**: DeepL API integration
+- **`aiTranslate.ts`**: Core translation logic
+- **`translateTextAndObjects.ts`**: Object translation utilities
+- **`handlers.ts`**: API endpoint handlers
+- **`access.ts`**: Access control functions
+- **`generateText.ts`**: Text generation utilities
 
-## Performance
+## Development
 
-- **Batch Processing**: Efficient translation of multiple texts
-- **Smart Caching**: Avoids re-translating unchanged content
-- **Async Operations**: Non-blocking translation operations
-- **Memory Efficient**: Minimal memory footprint
-- **RichText Optimization**: Efficient processing of complex nested structures
+### Code Quality
 
-## Troubleshooting
+- **TypeScript**: Full type safety
+- **Clean Code**: Follows SOLID principles
+- **Error Handling**: Comprehensive error handling
+- **Logging**: Appropriate logging for debugging
 
-### Common Issues
+### Testing
 
-1. **API Key Invalid**: Ensure `DEEPL_API_KEY` is set correctly
-2. **Rate Limiting**: Check DeepL usage limits
-3. **Language Codes**: Verify language codes are supported
-4. **Field Types**: Ensure fields are translatable types
-5. **Recursion Errors**: Check for circular references in RichText content
-
-### Debug Mode
-
-Enable debug logging by checking browser console for detailed information about:
-- Configuration loading
-- Language detection
-- Translation process
-- RichText processing
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Submit a pull request
+```bash
+npm run test
+# or
+yarn test
+```
 
 ## License
 
@@ -202,30 +191,4 @@ MIT License - see LICENSE file for details.
 
 ## Support
 
-For support and questions:
-
-- Create an issue on GitHub
-- Check the documentation
-- Review the examples
-
-## Changelog
-
-### v2.1.0
-- **Dynamic Language Detection**: Automatically detects available languages from Payload config
-- **Simplified UI**: Replaced complex modal with simple button interface
-- **Smart Visibility**: Button only shows for English locale documents
-- **Enhanced RichText Support**: Improved handling of nested RichText structures
-- **Force Re-translation**: Always re-translates fields to ensure content freshness
-- **Removed AfterDashboard**: Simplified plugin architecture
-
-### v2.0.0
-- **Migrated from Google Gemini to DeepL API**: Improved translation quality and reliability
-- **Added batch translation support**: Efficient processing of multiple fields
-- **Enhanced error handling**: Better error recovery and logging
-- **Performance optimization**: Improved memory usage and processing speed
-- **RichText support**: Full support for Lexical RichText editor content
-
-### v1.0.0
-- Initial release with DeepL API support
-- Basic translation functionality
-- Admin UI integration
+For issues and questions, please open an issue on GitHub.

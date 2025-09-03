@@ -1,12 +1,15 @@
-import type { DeepLTranslationRequest, DeepLTranslationResponse, PluginTypes } from './types'
+import type {
+  DeepLTranslationRequest,
+  DeepLTranslationResponse,
+  DeepLTranslationSettings,
+} from './types'
 
 export class DeepLService {
   private apiKey: string
   private apiUrl: string
 
-  constructor(pluginOptions: PluginTypes) {
+  constructor(pluginOptions: { deeplApiKey?: string; deeplApiUrl?: string }) {
     this.apiKey = pluginOptions.deeplApiKey || process.env.DEEPL_API_KEY || ''
-    // Always use Pro plan
     this.apiUrl = pluginOptions.deeplApiUrl || 'https://api.deepl.com/v2/translate'
 
     if (!this.apiKey) {
@@ -23,7 +26,7 @@ export class DeepLService {
     text: string,
     targetLang: string,
     sourceLang?: string,
-    settings?: any,
+    settings?: DeepLTranslationSettings,
   ): Promise<string> {
     try {
       const requestBody: DeepLTranslationRequest = {
@@ -35,13 +38,6 @@ export class DeepLService {
         tag_handling: settings?.tagHandling,
         split_sentences: settings?.splitSentences,
       }
-
-      console.log('🌐 DeepL translation request:', {
-        targetLang,
-        sourceLang,
-        textLength: text.length,
-        settings,
-      })
 
       const response = await fetch(this.apiUrl, {
         method: 'POST',
@@ -63,14 +59,9 @@ export class DeepLService {
         throw new Error('No translation returned from DeepL API')
       }
 
-      console.log('✅ DeepL translation successful:', {
-        detectedSourceLang: result.translations[0].detected_source_language,
-        translatedLength: result.translations[0].text.length,
-      })
-
       return result.translations[0].text
     } catch (error) {
-      console.error('❌ DeepL translation failed:', error)
+      console.error('DeepL translation failed:', error)
       throw error
     }
   }
@@ -82,7 +73,7 @@ export class DeepLService {
     texts: string[],
     targetLang: string,
     sourceLang?: string,
-    settings?: any,
+    settings?: DeepLTranslationSettings,
   ): Promise<string[]> {
     try {
       const requestBody: DeepLTranslationRequest = {
@@ -94,13 +85,6 @@ export class DeepLService {
         tag_handling: settings?.tagHandling,
         split_sentences: settings?.splitSentences,
       }
-
-      console.log('🌐 DeepL batch translation request:', {
-        targetLang,
-        sourceLang,
-        textCount: texts.length,
-        settings,
-      })
 
       const response = await fetch(this.apiUrl, {
         method: 'POST',
@@ -124,14 +108,9 @@ export class DeepLService {
         )
       }
 
-      console.log('✅ DeepL batch translation successful:', {
-        detectedSourceLang: result.translations[0]?.detected_source_language,
-        translatedCount: result.translations.length,
-      })
-
       return result.translations.map((t) => t.text)
     } catch (error) {
-      console.error('❌ DeepL batch translation failed:', error)
+      console.error('DeepL batch translation failed:', error)
       throw error
     }
   }

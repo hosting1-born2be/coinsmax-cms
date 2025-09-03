@@ -10,8 +10,11 @@ export { generateText }
 export type {
   PluginTypes,
   CollectionOptions,
+  DeepLTranslationSettings,
   DeepLTranslationRequest,
   DeepLTranslationResponse,
+  GenerateTextRequest,
+  GenerateTextResponse,
 } from './types'
 
 // Default export for backward compatibility

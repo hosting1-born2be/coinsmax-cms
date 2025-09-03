@@ -64,9 +64,13 @@ export default buildConfig({
     }),
     deeplTranslatorPlugin({
       enabled: true,
+      fallbackLocales: ['lt', 'sk'],
       collections: {
         insights: {
           fields: ['title', 'content', 'excerpt', 'seo_title', 'seo_description'],
+        },
+        policies: {
+          fields: ['title', 'content'],
         },
       },
     }),

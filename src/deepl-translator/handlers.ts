@@ -1,79 +1,77 @@
 import { validateAccess } from './access'
 import { translateCollection } from './aiTranslate'
-import { PluginTypes } from './types'
-import { PayloadHandler } from 'payload'
+import type { PluginTypes, TranslationRequest, TranslationResponse } from './types'
+import type { PayloadHandler } from 'payload'
 
+/**
+ * Create translation handler for single document
+ */
 export const createTranslatorHandler = (pluginOptions: PluginTypes): PayloadHandler => {
   return async (req) => {
     try {
-      // Get collection slug from URL parameters since we're using /collections/:collectionSlug/translate
-      const urlParts = (req as any).url?.split('/') || []
-      const collectionSlug = urlParts[urlParts.length - 2] // /api/collections/insights/translate -> insights
+      console.log('🔍 Translation handler debug info:')
+      console.log('  - Request URL:', (req as any).url)
+      console.log('  - Request params:', (req as any).params)
+      console.log('  - Request method:', (req as any).method)
 
-      // Alternative: try to get from req.params if available
-      const paramsCollectionSlug = (req as any).params?.collectionSlug
-      const finalCollectionSlug = paramsCollectionSlug || collectionSlug
+      // Try multiple ways to get collection slug
+      let collectionSlug = (req as any).params?.collectionSlug
+      console.log('  - Collection slug from params:', collectionSlug)
 
-      if (!finalCollectionSlug) {
+      // If not in params, try to extract from URL
+      if (!collectionSlug) {
+        const url = (req as any).url
+        if (url) {
+          const urlParts = url.split('/')
+          const collectionsIndex = urlParts.indexOf('collections')
+          console.log('  - URL parts:', urlParts)
+          console.log('  - Collections index:', collectionsIndex)
+          if (collectionsIndex !== -1 && urlParts[collectionsIndex + 1]) {
+            collectionSlug = urlParts[collectionsIndex + 1]
+            console.log('  - Collection slug from URL:', collectionSlug)
+          }
+        }
+      }
+
+      // If still no collection slug, try to get from request body
+      if (!collectionSlug) {
+        const requestBody = await getRequestBody(req)
+        collectionSlug = requestBody.collectionSlug
+        console.log('  - Collection slug from request body:', collectionSlug)
+      }
+
+      console.log('  - Final collection slug:', collectionSlug)
+
+      if (!collectionSlug) {
         return new Response(
           JSON.stringify({
             success: false,
-            message: 'Collection not found in URL',
+            message: 'Collection not found in URL or request body',
           }),
-          {
-            status: 400,
-            headers: { 'Content-Type': 'application/json' },
-          },
+          { status: 400, headers: { 'Content-Type': 'application/json' } },
         )
       }
 
-      // Try to get request body - in Payload CMS v3 it might be available in different ways
-      let requestBody = {}
+      const requestBody = await getRequestBody(req)
+      const { id, locale, codes, settings } = requestBody
 
-      // Method 1: Try req.body
-      if ((req as any).body && Object.keys((req as any).body).length > 0) {
-        requestBody = (req as any).body
-      }
-      // Method 2: Try req.json() if available
-      else if (typeof (req as any).json === 'function') {
-        try {
-          requestBody = await (req as any).json()
-        } catch (e) {
-          console.log('req.json() failed:', e)
-        }
-      }
-      // Method 3: Try to parse from URL search params or other sources
-      else {
-        console.log('⚠️ Request body not available through standard methods')
-        // Try to get from URL search params as fallback
-        const url = new URL((req as any).url)
-        const id = url.searchParams.get('id')
-        const locale = url.searchParams.get('locale')
-        if (id && locale) {
-          requestBody = { id, locale }
-        }
-      }
+      console.log('  - Request body:', { id, locale, codes, settings })
 
-      console.log('🔍 Translation handler debug info:')
-      console.log('  - Collection slug:', finalCollectionSlug)
-      console.log('  - Document ID:', (requestBody as any).id)
-      console.log('  - Source locale:', (requestBody as any).locale)
-      console.log('  - Request body:', JSON.stringify(requestBody, null, 2))
-      console.log('  - Request URL:', (req as any).url)
-      console.log('  - Request method:', (req as any).method)
-      console.log('  - Request headers:', (req as any).headers)
-      console.log('  - Full request object keys:', Object.keys(req as any))
+      if (!id || !locale) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            message: 'Document ID and locale are required',
+          }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } },
+        )
+      }
 
       const doc = await (req as any).payload.findByID({
-        collection: finalCollectionSlug,
-        id: (requestBody as any).id,
-        locale: (requestBody as any).locale,
+        collection: collectionSlug,
+        id,
+        locale,
       })
-
-      console.log('📄 Document lookup result:')
-      console.log('  - Document found:', !!doc)
-      console.log('  - Document ID:', doc?.id)
-      console.log('  - Document title:', doc?.title)
 
       if (!doc) {
         return new Response(
@@ -81,60 +79,44 @@ export const createTranslatorHandler = (pluginOptions: PluginTypes): PayloadHand
             success: false,
             message: 'Document not found',
           }),
-          {
-            status: 404,
-            headers: { 'Content-Type': 'application/json' },
-          },
+          { status: 404, headers: { 'Content-Type': 'application/json' } },
         )
       }
 
-      const collectionOptions = pluginOptions.collections[finalCollectionSlug]
+      const collectionOptions = pluginOptions.collections[collectionSlug]
       if (!collectionOptions) {
         return new Response(
           JSON.stringify({
             success: false,
             message: 'Collection not configured for translation',
           }),
-          {
-            status: 400,
-            headers: { 'Content-Type': 'application/json' },
-          },
+          { status: 400, headers: { 'Content-Type': 'application/json' } },
         )
       }
 
-      if (!validateAccess(req, null, pluginOptions, finalCollectionSlug)) {
+      if (!validateAccess(req, pluginOptions, collectionSlug)) {
         return new Response(
           JSON.stringify({
             success: false,
             message: 'Access denied',
           }),
-          {
-            status: 403,
-            headers: { 'Content-Type': 'application/json' },
-          },
+          { status: 403, headers: { 'Content-Type': 'application/json' } },
         )
       }
 
-      const settings = {
-        ...((requestBody as any).settings || {}),
+      const finalSettings = {
+        ...(settings || {}),
         ...collectionOptions.settings,
       }
 
       await translateCollection({
         doc,
         req,
-        previousDoc: {},
-        context: {
-          triggerAfterChange: true, // Allow translation to proceed
-          skipHooks: false, // Allow hooks for translation
-          isTranslationUpdate: true, // Mark this as a translation update
-        },
         collectionOptions,
-        collection: { slug: finalCollectionSlug },
-        onlyMissing: false, // Always translate all fields, even if they already exist
-        codes: (requestBody as any).codes,
-        sourceLanguage: (requestBody as any).locale,
-        settings: { ...settings },
+        collection: { slug: collectionSlug },
+        codes,
+        sourceLanguage: locale,
+        settings: finalSettings,
       })
 
       return new Response(
@@ -142,9 +124,7 @@ export const createTranslatorHandler = (pluginOptions: PluginTypes): PayloadHand
           success: true,
           message: 'Translation completed successfully',
         }),
-        {
-          headers: { 'Content-Type': 'application/json' },
-        },
+        { headers: { 'Content-Type': 'application/json' } },
       )
     } catch (error) {
       console.error('Translation handler error:', error)
@@ -154,55 +134,65 @@ export const createTranslatorHandler = (pluginOptions: PluginTypes): PayloadHand
           message: 'Translation failed',
           error: String(error),
         }),
-        {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' },
-        },
+        { status: 500, headers: { 'Content-Type': 'application/json' } },
       )
     }
   }
 }
 
+/**
+ * Create bulk translation handler for multiple documents
+ */
 export const createMissingTranslatorHandler = (pluginOptions: PluginTypes): PayloadHandler => {
   return async (req) => {
     try {
-      // Get collection slug from URL parameters since we're using /collections/:collectionSlug/translate
-      const urlParts = (req as any).url?.split('/') || []
-      const collectionSlug = urlParts[urlParts.length - 2] // /api/collections/insights/translate -> insights
+      // Try multiple ways to get collection slug
+      let collectionSlug = (req as any).params?.collectionSlug
 
-      // Alternative: try to get from req.params if available
-      const paramsCollectionSlug = (req as any).params?.collectionSlug
-      const finalCollectionSlug = paramsCollectionSlug || collectionSlug
+      // If not in params, try to extract from URL
+      if (!collectionSlug) {
+        const url = (req as any).url
+        if (url) {
+          const urlParts = url.split('/')
+          const collectionsIndex = urlParts.indexOf('collections')
+          if (collectionsIndex !== -1 && urlParts[collectionsIndex + 1]) {
+            collectionSlug = urlParts[collectionsIndex + 1]
+          }
+        }
+      }
 
-      if (!finalCollectionSlug) {
+      // If still no collection slug, try to get from request body
+      if (!collectionSlug) {
+        const requestBody = await getRequestBody(req)
+        collectionSlug = requestBody.collectionSlug
+      }
+
+      if (!collectionSlug) {
         return new Response(
           JSON.stringify({
             success: false,
-            message: 'Collection not found in URL',
+            message: 'Collection not found in URL or request body',
           }),
-          {
-            status: 400,
-            headers: { 'Content-Type': 'application/json' },
-          },
+          { status: 400, headers: { 'Content-Type': 'application/json' } },
         )
       }
 
-      if (!validateAccess(req, null, pluginOptions, finalCollectionSlug)) {
+      if (!validateAccess(req, pluginOptions, collectionSlug)) {
         return new Response(
           JSON.stringify({
             success: false,
             message: 'Access denied',
           }),
-          {
-            status: 403,
-            headers: { 'Content-Type': 'application/json' },
-          },
+          { status: 403, headers: { 'Content-Type': 'application/json' } },
         )
       }
 
+      const requestBody = await getRequestBody(req)
+      const { locale, codes, settings } = requestBody
+
       const allDocs = await (req as any).payload.find({
-        collection: finalCollectionSlug,
-        locale: (req as any).body.locale,
+        collection: collectionSlug,
+        locale,
         limit: 10000,
       })
 
@@ -212,47 +202,29 @@ export const createMissingTranslatorHandler = (pluginOptions: PluginTypes): Payl
             success: false,
             message: 'No documents found',
           }),
-          {
-            status: 404,
-            headers: { 'Content-Type': 'application/json' },
-          },
+          { status: 404, headers: { 'Content-Type': 'application/json' } },
         )
       }
 
-      console.log('Translating all docs:', allDocs.docs.length)
+      const collectionOptions = pluginOptions.collections[collectionSlug]
+      const finalSettings = {
+        ...(settings || {}),
+        ...collectionOptions.settings,
+      }
 
-      for (const singleDoc of allDocs.docs) {
+      for (const doc of allDocs.docs) {
         try {
-          const doc = await (req as any).payload.findByID({
-            collection: finalCollectionSlug,
-            id: singleDoc.id,
-            locale: singleDoc.sourceLanguage || (req as any).body.locale,
-          })
-
-          const collectionOptions = pluginOptions.collections[finalCollectionSlug]
-          const settings = {
-            ...((req as any).body.settings || {}),
-            ...collectionOptions.settings,
-          }
-
           await translateCollection({
             doc,
             req,
-            previousDoc: {},
-            context: {
-              triggerAfterChange: true, // Allow translation to proceed
-              skipHooks: false, // Allow hooks for translation
-              isTranslationUpdate: true, // Mark this as a translation update
-            },
             collectionOptions,
-            collection: { slug: finalCollectionSlug },
-            onlyMissing: false, // Always translate all fields, even if they already exist
-            codes: (req as any).body.codes,
-            sourceLanguage: doc.sourceLanguage || (req as any).body.locale,
-            settings: { ...settings },
+            collection: { slug: collectionSlug },
+            codes,
+            sourceLanguage: locale,
+            settings: finalSettings,
           })
         } catch (error) {
-          console.error(`Failed to translate document ${singleDoc.id}:`, error)
+          console.error(`Failed to translate document ${doc.id}:`, error)
         }
       }
 
@@ -261,9 +233,7 @@ export const createMissingTranslatorHandler = (pluginOptions: PluginTypes): Payl
           success: true,
           message: 'Bulk translation completed',
         }),
-        {
-          headers: { 'Content-Type': 'application/json' },
-        },
+        { headers: { 'Content-Type': 'application/json' } },
       )
     } catch (error) {
       console.error('Bulk translation handler error:', error)
@@ -273,39 +243,32 @@ export const createMissingTranslatorHandler = (pluginOptions: PluginTypes): Payl
           message: 'Bulk translation failed',
           error: String(error),
         }),
-        {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' },
-        },
+        { status: 500, headers: { 'Content-Type': 'application/json' } },
       )
     }
   }
 }
 
+/**
+ * Create text generation handler
+ */
 export const generateTextHandler = (pluginOptions: PluginTypes): PayloadHandler => {
   return async (req) => {
     try {
-      if (!validateAccess(req, null, pluginOptions, 'system')) {
+      if (!validateAccess(req, pluginOptions, 'system')) {
         return new Response(
           JSON.stringify({
             success: false,
             message: 'Access denied',
           }),
-          {
-            status: 403,
-            headers: { 'Content-Type': 'application/json' },
-          },
+          { status: 403, headers: { 'Content-Type': 'application/json' } },
         )
       }
 
       const { generateText } = await import('./generateText')
-      const requestBody = (req as any).body || {}
-      const result = await generateText({
-        ...requestBody,
-        settings: {
-          ...requestBody.settings,
-        },
-      })
+      const requestBody = await getRequestBody(req)
+      const result = await generateText(requestBody)
+
       return new Response(JSON.stringify(result), {
         headers: { 'Content-Type': 'application/json' },
       })
@@ -317,11 +280,51 @@ export const generateTextHandler = (pluginOptions: PluginTypes): PayloadHandler 
           message: 'Text generation failed',
           error: String(error),
         }),
-        {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' },
-        },
+        { status: 500, headers: { 'Content-Type': 'application/json' } },
       )
     }
   }
+}
+
+/**
+ * Extract request body from different sources
+ */
+async function getRequestBody(req: any): Promise<any> {
+  console.log('🔍 getRequestBody debug:')
+  console.log('  - req.body:', (req as any).body)
+  console.log('  - req.json function:', typeof (req as any).json)
+
+  // Try req.body first
+  if ((req as any).body && Object.keys((req as any).body).length > 0) {
+    console.log('  - Using req.body')
+    return (req as any).body
+  }
+
+  // Try req.json() if available
+  if (typeof (req as any).json === 'function') {
+    try {
+      const body = await (req as any).json()
+      console.log('  - Using req.json():', body)
+      return body
+    } catch (e) {
+      console.log('  - req.json() failed:', e)
+    }
+  }
+
+  // Try URL search params as fallback
+  const url = (req as any).url
+  if (url) {
+    const urlObj = new URL(url)
+    const id = urlObj.searchParams.get('id')
+    const locale = urlObj.searchParams.get('locale')
+    console.log('  - URL search params:', { id, locale })
+
+    if (id && locale) {
+      console.log('  - Using URL search params')
+      return { id, locale }
+    }
+  }
+
+  console.log('  - No request body found, returning empty object')
+  return {}
 }
